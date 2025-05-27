@@ -1,4 +1,3 @@
-
 {
   "openapi": "3.0.0",
   "info": {
@@ -8,35 +7,77 @@
   "paths": {
     "/products": {
       "get": {
-        "summary": "Search and filter products",
+        "summary": "Search and filter products for a given shop",
         "parameters": [
-          { "name": "q", "in": "query", "schema": { "type": "string" } },
-          { "name": "price_min", "in": "query", "schema": { "type": "number" } },
-          { "name": "price_max", "in": "query", "schema": { "type": "number" } },
-          { "name": "tags_includeany", "in": "query", "schema": { "type": "string" } },
-          { "name": "in_stock", "in": "query", "schema": { "type": "boolean" } }
+          {
+            "name": "shop",
+            "in": "query",
+            "required": true,
+            "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)",
+            "schema": { "type": "string" }
+          },
+          { "name": "q", "in": "query", "description": "Free-text search (title, body_html, tags)", "schema": { "type": "string" } },
+          { "name": "handle", "in": "query", "description": "Product URL slug. If provided, returns only that product's full details.", "schema": { "type": "string" } },
+          { "name": "product_type", "in": "query", "description": "Shopify product type", "schema": { "type": "string" } },
+          { "name": "vendor", "in": "query", "description": "Product vendor/brand", "schema": { "type": "string" } },
+          { "name": "price_min", "in": "query", "description": "Min product variant price", "schema": { "type": "number" } },
+          { "name": "price_max", "in": "query", "description": "Max product variant price", "schema": { "type": "number" } },
+          { "name": "tags_includeany", "in": "query", "description": "Comma-separated tags (match any)", "schema": { "type": "string" } },
+          { "name": "tags_includeall", "in": "query", "description": "Comma-separated tags (match all)", "schema": { "type": "string" } },
+          { "name": "color", "in": "query", "description": "Filters by color option", "schema": { "type": "string" } },
+          { "name": "size", "in": "query", "description": "Filters by size option", "schema": { "type": "string" } },
+          { "name": "in_stock", "in": "query", "description": "true for products with at least one variant in stock", "schema": { "type": "boolean" } },
+          { "name": "sort_by", "in": "query", "description": "Sort order: published_at_desc, price_asc, price_desc, relevance", "schema": { "type": "string", "enum": ["published_at_desc", "price_asc", "price_desc", "relevance"] } },
+          { "name": "limit", "in": "query", "description": "Number of products to return (default: 20, max: 100)", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "description": "Offset for pagination (default: 0)", "schema": { "type": "integer", "default": 0 } }
         ],
         "responses": {
           "200": {
-            "description": "Filtered list of products"
+            "description": "Filtered and paginated list of product summaries, or a single complete product object if 'handle' is provided.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/ProductComplete" },
+                    { 
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ProductSummary" }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request, e.g., missing shop parameter"
           }
         }
       }
     },
     "/products/{productId}": {
       "get": {
-        "summary": "Get a product by ID",
+        "summary": "Get a product by ID for a given shop",
         "parameters": [
           {
             "name": "productId",
             "in": "path",
             "required": true,
             "schema": { "type": "string" }
+          },
+          {
+            "name": "shop",
+            "in": "query",
+            "required": true,
+            "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)",
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
           "200": {
             "description": "Single product object"
+          },
+          "400": {
+            "description": "Bad Request, e.g., missing shop parameter"
           }
         }
       }
@@ -51,7 +92,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "shop": { "type": "string" },
+                  "shop": {
+                    "type": "string",
+                    "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)"
+                  },
                   "lineItems": {
                     "type": "array",
                     "items": {
@@ -75,6 +119,9 @@
         "responses": {
           "200": {
             "description": "Checkout URL"
+          },
+          "400": {
+            "description": "Bad Request, e.g., missing shop or lineItems"
           }
         }
       }
