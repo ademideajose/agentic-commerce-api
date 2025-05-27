@@ -1,94 +1,150 @@
+// src/auth/auth.controller.ts
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Query,
   Res,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import axios from 'axios';
-import { ProductsService } from '../products/products.service';
+import { TokenStorageService } from './token-storage.service';
 
-//const SHOP = 'theapparelhouse.myshopify.com';
+interface ShopifyInitDto {
+  shop: string;
+  accessToken: string;
+}
 
-@Controller('auth')
+@Controller('auth') // Will be /agent-api/auth due to global prefix in main.ts
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly configService: ConfigService,
-    private readonly productsService: ProductsService, // Ensure ProductsService is correctly typed if you changed its setToken method
+    private readonly tokenStorageService: TokenStorageService,
   ) {}
 
-  @Get()
-  async startOAuth(
-    @Query('shop') shop: string, // <<< ADDED shop query parameter
-    @Res() res: Response,
-  ) {
+  @Get() // path is /agent-api/auth
+  async startOAuth(@Query('shop') shop: string, @Res() res: Response) {
     if (!shop) {
-      // <<< ADDED validation for shop
-      throw new BadRequestException(
-        'Shop query parameter is required to start OAuth.',
-      );
+      throw new BadRequestException('Shop query parameter is required.');
     }
+    const clientId = this.configService.get<string>('SHOPIFY_API_KEY'); // For this NestJS App
+    const scopes = this.configService.get<string>('SCOPES_NESTJS_APP'); // Scopes this NestJS App needs (e.g., read_products,write_checkouts)
+    const appUrl = this.configService.get<string>('AGENTIC_COMMERCE_API_URL'); // Base URL of this NestJS App (e.g., https://agentic-commerce-api.onrender.com)
 
-    const clientId = this.configService.get<string>('SHOPIFY_API_KEY');
-    const scopes = this.configService.get<string>('SCOPES');
-    const appUrl = this.configService.get<string>('SHOPIFY_APP_URL');
-    // Pass shop in the state or as part of redirect_uri to retrieve in callback
-    const redirectUri = `${appUrl}/agent-api/auth/callback?shop=${encodeURIComponent(shop)}`; // <<< MODIFIED to include shop
+    // Callback will be /agent-api/auth/callback because of global prefix
+    const redirectUri = `${appUrl}/agent-api/auth/callback`;
 
-    const url = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}`;
-    console.log(`🔍 Redirecting to: ${url} for shop: ${shop}`);
-    return res.redirect(url);
+    // State parameter for CSRF protection and potentially passing info
+    // In a production app, you'd generate a secure random nonce for 'state', store it (e.g., in session or short-lived cache),
+    // and then verify it on callback. For simplicity in MVP, we're just creating it.
+    const state = `nonce_${Date.now()}_${shop}`; // Example state including shop (can be used for verification)
+
+    const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    this.logger.log(
+      `Redirecting to Shopify OAuth for shop ${shop}: ${authUrl}`,
+    );
+    res.redirect(authUrl);
   }
 
-  @Get('callback')
+  @Get('callback') // path is /agent-api/auth/callback
   async handleCallback(
     @Query('code') code: string,
-    @Query('shop') shop: string, // <<< ADDED shop query parameter (retrieved from redirect)
+    @Query('shop') shopFromShopify: string, // Shopify sends 'shop' on callback
+    @Query('state') receivedState: string, // The 'state' parameter you sent
     @Res() res: Response,
   ) {
+    // TODO: Implement proper 'state' validation against a stored nonce to prevent CSRF.
+    // For an MVP, you might log it or do a basic check if you embedded identifiable info.
+    // Example (very basic, assumes shop was part of state for cross-check, but real CSRF protection is more):
+    // const expectedShopFromState = receivedState.split('_').pop();
+    // if (!receivedState || !expectedShopFromState || shopFromShopify !== expectedShopFromState) {
+    //   this.logger.error(`State mismatch or missing. Received shop: ${shopFromShopify}, state: ${receivedState}`);
+    //   throw new BadRequestException('Invalid state or shop parameter mismatch.');
+    // }
+    this.logger.log(
+      `Received callback for shop: ${shopFromShopify} with state: ${receivedState}`,
+    );
+    const shop = shopFromShopify; // Use the shop parameter directly from Shopify's callback
+
     if (!code || !shop) {
-      // <<< ADDED validation
       throw new BadRequestException('Missing code or shop in callback.');
     }
 
-    const clientId = this.configService.get<string>('SHOPIFY_API_KEY');
-    const clientSecret = this.configService.get<string>('SHOPIFY_API_SECRET');
+    const clientId = this.configService.get<string>('SHOPIFY_API_KEY'); // For this NestJS App
+    const clientSecret = this.configService.get<string>('SHOPIFY_API_SECRET'); // For this NestJS App
 
     try {
-      const tokenRes = await axios.post(
-        `https://${shop}/admin/oauth/access_token`, // <<< Use dynamic shop
-        {
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-        },
+      const tokenResponse = await axios.post(
+        `https://${shop}/admin/oauth/access_token`,
+        { client_id: clientId, client_secret: clientSecret, code },
       );
 
-      const accessToken = tokenRes.data.access_token;
-      console.log(`✅ Access Token for ${shop}: ${accessToken}`);
+      const accessToken = tokenResponse.data.access_token;
+      const receivedScopes = tokenResponse.data.scope;
 
-      // 🔐 Save token in service (or a more persistent store for multi-tenancy)
-      // For now, assuming productsService.setToken might be adapted or this logic will change.
-      // If ProductsService.setToken is not shop-aware yet, this will overwrite the global token.
-      // This needs to be addressed for true multi-tenancy.
-      this.productsService.setToken(accessToken); // Or this.productsService.setTokenForShop(shop, accessToken);
-      // For now, the global token in ProductService is being set.
-      // In a real multi-tenant app, you would store this token associated with the 'shop'
-      // e.g., in a database: await shopTokenStorage.saveToken(shop, accessToken);
+      this.logger.log(
+        `✅ Access Token obtained for ${shop}. Scopes: ${receivedScopes}`,
+      );
+      await this.tokenStorageService.saveToken(
+        shop,
+        accessToken,
+        receivedScopes,
+      );
+      this.logger.log(`Token for ${shop} securely stored.`);
 
-      return res.send(
-        `OAuth successful for ${shop}. Access Token has been (globally) set. In a multi-tenant app, this token would be stored securely for this shop.`,
+      // Redirect to a success page or convey success to the user who authorized
+      res.send(
+        `OAuth successful for ${shop}. Token stored. Your application is now authorized. You can close this window.`,
       );
     } catch (error) {
-      console.error(
-        `Error obtaining access token for ${shop}:`,
-        error.response?.data || error.message,
+      this.logger.error(
+        `Error obtaining access token for ${shop}: ${error.message}`,
+        error.response?.data, // Log the full error data from Shopify if available
       );
+      const errorDescription =
+        error.response?.data?.error_description ||
+        error.response?.data?.error ||
+        'Unknown error during token exchange.';
       throw new BadRequestException(
-        `Failed to obtain access token for ${shop}.`,
+        `Failed to obtain access token for ${shop}. Shopify error: ${errorDescription}`,
       );
     }
+  }
+
+  @Post('shopify/init') // path is /agent-api/auth/shopify/init
+  @HttpCode(HttpStatus.OK)
+  async handleShopifyInit(
+    @Body() shopifyInitDto: ShopifyInitDto,
+  ): Promise<{ message: string }> {
+    const { shop, accessToken } = shopifyInitDto; // accessToken from Shopify App is received
+    if (!shop) {
+      throw new BadRequestException('Shop is required in the request body.');
+    }
+    this.logger.log(
+      `Received Shopify init POST for shop: ${shop} with accesstoken ${accessToken}.`,
+    );
+
+    // As discussed, this endpoint primarily serves as a notification.
+    // The NestJS app should rely on its own OAuth flow (above) for operational tokens.
+    // You *could* optionally try to use/store the accessToken from the Shopify app here,
+    // but it requires careful consideration of scopes and token lifecycle.
+    // Example (use with caution, ensure scopes match what this NestJS app needs):
+    // if (accessToken) {
+    //   const scopesFromShopifyApp = "read_products"; // You would need to know/infer/receive these scopes
+    //   await this.tokenStorageService.saveToken(shop, accessToken, scopesFromShopifyApp);
+    //   this.logger.log(`Token for ${shop} (from Shopify app init) has been stored/updated.`);
+    // }
+
+    return {
+      message: `Shopify init acknowledged for ${shop}. This service will use its own OAuth flow for Shopify API access as needed.`,
+    };
   }
 }

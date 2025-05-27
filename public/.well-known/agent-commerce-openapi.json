@@ -2,44 +2,69 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Agentic Commerce API",
-    "version": "1.0.0"
+    "version": "1.1.0",
+    "description": "API for AI agents to browse products and initiate checkouts, based on Agentic Commerce Infrastructure Blueprint v1.1.",
+    "contact": {
+      "name": "Your Store/Company Name",
+      "url": "https://your-store-or-company-website.com",
+      "email": "support@your-store-or-company.com"
+    }
   },
+  "servers": [
+    {
+      "url": "https://agentic-commerce-api.onrender.com/agent-api",
+      "description": "Production Server for Agentic Commerce API (with /agent-api prefix)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Products",
+      "description": "Endpoints for product discovery and retrieval."
+    },
+    {
+      "name": "Checkouts",
+      "description": "Endpoints for initiating the checkout process."
+    }
+  ],
   "paths": {
     "/products": {
       "get": {
+        "tags": ["Products"],
         "summary": "Search and filter products for a given shop",
+        "description": "Allows agents to search, filter, and paginate through products. If 'handle' is provided, returns a single complete product object.",
+        "operationId": "searchProducts",
         "parameters": [
           {
             "name": "shop",
             "in": "query",
             "required": true,
             "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)",
-            "schema": { "type": "string" }
+            "schema": { "type": "string", "example": "your-store.myshopify.com" }
           },
-          { "name": "q", "in": "query", "description": "Free-text search (title, body_html, tags)", "schema": { "type": "string" } },
-          { "name": "handle", "in": "query", "description": "Product URL slug. If provided, returns only that product's full details.", "schema": { "type": "string" } },
-          { "name": "product_type", "in": "query", "description": "Shopify product type", "schema": { "type": "string" } },
-          { "name": "vendor", "in": "query", "description": "Product vendor/brand", "schema": { "type": "string" } },
-          { "name": "price_min", "in": "query", "description": "Min product variant price", "schema": { "type": "number" } },
-          { "name": "price_max", "in": "query", "description": "Max product variant price", "schema": { "type": "number" } },
-          { "name": "tags_includeany", "in": "query", "description": "Comma-separated tags (match any)", "schema": { "type": "string" } },
-          { "name": "tags_includeall", "in": "query", "description": "Comma-separated tags (match all)", "schema": { "type": "string" } },
-          { "name": "color", "in": "query", "description": "Filters by color option", "schema": { "type": "string" } },
-          { "name": "size", "in": "query", "description": "Filters by size option", "schema": { "type": "string" } },
-          { "name": "in_stock", "in": "query", "description": "true for products with at least one variant in stock", "schema": { "type": "boolean" } },
-          { "name": "sort_by", "in": "query", "description": "Sort order: published_at_desc, price_asc, price_desc, relevance", "schema": { "type": "string", "enum": ["published_at_desc", "price_asc", "price_desc", "relevance"] } },
-          { "name": "limit", "in": "query", "description": "Number of products to return (default: 20, max: 100)", "schema": { "type": "integer", "default": 20 } },
-          { "name": "offset", "in": "query", "description": "Offset for pagination (default: 0)", "schema": { "type": "integer", "default": 0 } }
+          { "name": "q", "in": "query", "description": "Free-text search query (searches title, body_html, tags, vendor, product_type).", "schema": { "type": "string" } },
+          { "name": "handle", "in": "query", "description": "Product URL slug/handle. If provided, returns only that product's full details, ignoring other filters.", "schema": { "type": "string" } },
+          { "name": "product_type", "in": "query", "description": "Filter by Shopify product type.", "schema": { "type": "string" } },
+          { "name": "vendor", "in": "query", "description": "Filter by product vendor/brand.", "schema": { "type": "string" } },
+          { "name": "price_min", "in": "query", "description": "Minimum product variant price.", "schema": { "type": "number", "format": "float" } },
+          { "name": "price_max", "in": "query", "description": "Maximum product variant price.", "schema": { "type": "number", "format": "float" } },
+          { "name": "tags_includeany", "in": "query", "description": "Comma-separated list of tags. Products matching any of these tags will be returned.", "schema": { "type": "string" } },
+          { "name": "tags_includeall", "in": "query", "description": "Comma-separated list of tags. Products matching all of these tags will be returned.", "schema": { "type": "string" } },
+          { "name": "color", "in": "query", "description": "Filter by product option 'Color'. Case-insensitive.", "schema": { "type": "string" } },
+          { "name": "size", "in": "query", "description": "Filter by product option 'Size'. Case-insensitive.", "schema": { "type": "string" } },
+          { "name": "in_stock", "in": "query", "description": "Set to true to only return products with at least one variant currently in stock.", "schema": { "type": "boolean" } },
+          { "name": "sort_by", "in": "query", "description": "Sort order for products.", "schema": { "type": "string", "enum": ["published_at_desc", "price_asc", "price_desc", "relevance"], "default": "relevance" } },
+          { "name": "limit", "in": "query", "description": "Number of products to return per page.", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "offset", "in": "query", "description": "Offset for pagination.", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
           "200": {
-            "description": "Filtered and paginated list of product summaries, or a single complete product object if 'handle' is provided.",
+            "description": "Successfully retrieved product data. Returns a single ProductComplete object if 'handle' is provided, otherwise an array of ProductSummary objects.",
             "content": {
               "application/json": {
                 "schema": {
                   "oneOf": [
                     { "$ref": "#/components/schemas/ProductComplete" },
-                    { 
+                    {
                       "type": "array",
                       "items": { "$ref": "#/components/schemas/ProductSummary" }
                     }
@@ -48,45 +73,63 @@
               }
             }
           },
-          "400": {
-            "description": "Bad Request, e.g., missing shop parameter"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/UnauthorizedShopifyToken" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },
     "/products/{productId}": {
       "get": {
-        "summary": "Get a product by ID for a given shop",
+        "tags": ["Products"],
+        "summary": "Get a product by its GID for a given shop",
+        "description": "Retrieves the complete details for a single product using its Shopify Admin GraphQL ID (GID). The GID should be the `id` field from the product object, e.g. 'gid://shopify/Product/123...'.",
+        "operationId": "getProductById",
         "parameters": [
           {
             "name": "productId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "description": "The Shopify Admin GraphQL ID of the product (e.g., gid://shopify/Product/1234567890). This is the 'id' field returned by the products endpoint.",
+            "schema": { "type": "string", "example": "gid://shopify/Product/1234567890" }
           },
           {
             "name": "shop",
             "in": "query",
             "required": true,
-            "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)",
-            "schema": { "type": "string" }
+            "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com).",
+            "schema": { "type": "string", "example": "your-store.myshopify.com" }
           }
         ],
         "responses": {
           "200": {
-            "description": "Single product object"
+            "description": "Successfully retrieved the complete product object.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductComplete" }
+              }
+            }
           },
-          "400": {
-            "description": "Bad Request, e.g., missing shop parameter"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/UnauthorizedShopifyToken" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },
     "/checkouts": {
       "post": {
-        "summary": "Generate a checkout URL",
+        "tags": ["Checkouts"],
+        "summary": "Generate a Shopify checkout URL",
+        "description": "Creates a pre-filled Shopify checkout (or cart permalink leading to checkout) for the specified line items. Requires API Key authentication.",
+        "operationId": "createCheckout",
+        "security": [
+          {
+            "AgentApiKeyAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
+          "description": "Details for creating the checkout.",
           "content": {
             "application/json": {
               "schema": {
@@ -94,22 +137,47 @@
                 "properties": {
                   "shop": {
                     "type": "string",
-                    "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)"
+                    "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com).",
+                    "example": "your-store.myshopify.com"
                   },
                   "lineItems": {
                     "type": "array",
+                    "description": "An array of line items to add to the checkout.",
                     "items": {
                       "type": "object",
                       "properties": {
-                        "variantId": { "type": "string" },
-                        "quantity": { "type": "integer" }
+                        "variantId": {
+                          "type": "string",
+                          "description": "The Shopify Admin GraphQL ID of the product variant (e.g., gid://shopify/ProductVariant/12345). This is the 'id' field from the variant object.",
+                          "example": "gid://shopify/ProductVariant/1234567890"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "description": "The quantity of this variant.",
+                          "minimum": 1,
+                          "example": 1
+                        }
                       },
                       "required": ["variantId", "quantity"]
-                    }
+                    },
+                    "minItems": 1
                   },
-                  "discountCode": { "type": "string" },
-                  "note": { "type": "string" },
-                  "customerEmail": { "type": "string" }
+                  "discountCode": {
+                    "type": "string",
+                    "description": "Optional discount code to apply to the checkout.",
+                    "example": "SUMMER10"
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Optional note to add to the order.",
+                    "example": "Please gift wrap this item."
+                  },
+                  "customerEmail": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Optional customer email to pre-fill in the checkout.",
+                    "example": "customer@example.com"
+                  }
                 },
                 "required": ["shop", "lineItems"]
               }
@@ -118,13 +186,197 @@
         },
         "responses": {
           "200": {
-            "description": "Checkout URL"
+            "description": "Successfully generated the checkout URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkoutUrl": {
+                      "type": "string",
+                      "format": "url",
+                      "description": "The URL that directs the user to the Shopify checkout page with pre-filled items.",
+                      "example": "https://your-store.myshopify.com/cart/gid://shopify/ProductVariant/12345:1?discount=CODE"
+                    }
+                  },
+                  "required": ["checkoutUrl"]
+                }
+              }
+            }
           },
-          "400": {
-            "description": "Bad Request, e.g., missing shop or lineItems"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/UnauthorizedAgentApiKey" }
         }
       }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProductSummary": {
+        "type": "object",
+        "description": "A summary representation of a product, suitable for listings. This is based on the paginated output of /products when 'handle' is not provided.",
+        "properties": {
+          "productId": { "type": "string", "description": "The GID of the product (e.g., gid://shopify/Product/123). This is the canonical ID (product.admin_graphql_api_id or product.id).", "example": "gid://shopify/Product/1234567890" },
+          "title": { "type": "string", "description": "Product name or title.", "example": "Classic Red T-Shirt" },
+          "mainImage": { "type": "string", "format": "url", "nullable": true, "description": "URL of the main product image (product.image?.src).", "example": "https://cdn.shopify.com/s/files/1/0000/0001/products/red-tshirt.jpg" },
+          "basePrice": { "type": "string", "description": "Price of the first variant (product.variants?.[0]?.price). Consider converting to number if always numeric.", "example": "29.99" },
+          "keyTags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "First few tags associated with the product (up to 3).", "example": ["cotton", "summer", "casual"]
+          }
+        },
+        "required": ["productId", "title"]
+      },
+      "ProductComplete": {
+        "type": "object",
+        "description": "The complete representation of a product, including all variants and detailed information. This is based on the transformProductForDetail function.",
+        "properties": {
+          "id": { "type": "string", "description": "The GID of the product (product.admin_graphql_api_id).", "example": "gid://shopify/Product/1234567890" },
+          "name": { "type": "string", "description": "Product name (product.title).", "example": "Classic Red T-Shirt" },
+          "description": { "type": "string", "nullable": true, "description": "Full product description, typically HTML (product.body_html).", "example": "<p>Comfortable and stylish red t-shirt.</p>" },
+          "url": { "type": "string", "format": "url", "description": "Canonical URL to the product page on the storefront.", "example": "https://your-store.myshopify.com/products/classic-red-tshirt" },
+          "handle": { "type": "string", "description": "Product URL slug/handle.", "example": "classic-red-tshirt" },
+          "brand": { "$ref": "#/components/schemas/Brand" },
+          "productType": { "type": "string", "nullable": true, "description": "Shopify product type.", "example": "T-Shirt" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags associated with the product.", "example": ["cotton", "summer", "casual", "red"] },
+          "status": { "type": "string", "enum": ["active", "archived", "draft"], "description": "Product status in Shopify.", "example": "active" },
+          "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of product creation." },
+          "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of last product update." },
+          "publishedAt": { "type": "string", "format": "date-time", "nullable": true, "description": "Timestamp of when the product was published. Null if not published." },
+          "images": {
+            "type": "array",
+            "description": "A list of product images.",
+            "items": { "$ref": "#/components/schemas/ImageObject" }
+          },
+          "options": {
+             "type": "array",
+             "description": "Product options definitions from product.options (not directly in transformProductForDetail output for ProductComplete root, but used for variant attributes. Define if needed).",
+             "items": { "$ref": "#/components/schemas/ProductOptionDefinition" }
+          },
+          "offers": { "$ref": "#/components/schemas/AggregateOfferComplete" }
+        },
+        "required": ["id", "name", "url", "handle", "offers"]
+      },
+      "ImageObject": {
+        "type": "object",
+        "properties": {
+          "@type": { "type": "string", "default": "ImageObject" },
+          "url": { "type": "string", "format": "url", "description": "URL of the image (img.src)." },
+          "alternateName": { "type": "string", "nullable": true, "description": "Alt text for the image (product.title in your transform)." },
+          "position": { "type": "integer", "nullable": true, "description": "Position of the image in a gallery (idx + 1)." }
+        },
+        "required": ["url"]
+      },
+      "Brand": {
+        "type": "object",
+        "properties": {
+          "@type": { "type": "string", "default": "Brand" },
+          "name": { "type": "string", "description": "Vendor/Brand name (product.vendor)." }
+        },
+        "required": ["name"]
+      },
+      "ProductOptionDefinition": {
+        "type": "object",
+        "description": "Defines a product option (e.g., Color) and its available values. Based on product.options from Shopify.",
+        "properties": {
+          "id": {"type": "number", "description": "Shopify option ID (from product.options[].id)."},
+          "name": { "type": "string", "description": "Name of the option (e.g., 'Color', 'Size')." },
+          "position": {"type": "integer", "description": "Position of the option (from product.options[].position)."},
+          "values": { "type": "array", "items": { "type": "string" }, "description": "Available values for this option (e.g., ['Red', 'Blue'], ['S', 'M', 'L'])." }
+        },
+        "required": ["id", "name", "position", "values"]
+      },
+      "AggregateOfferComplete": {
+          "type": "object",
+          "description": "Detailed pricing and availability for all product variants, based on product.variants.",
+          "properties": {
+            "@type": { "type": "string", "default": "AggregateOffer" },
+            "lowPrice": { "type": "number", "format": "float", "description": "The lowest price among all available variants." },
+            "highPrice": { "type": "number", "format": "float", "description": "The highest price among all available variants." },
+            "priceCurrency": { "type": "string", "description": "The currency code (ISO 4217) for the prices.", "example": "USD" },
+            "offerCount": { "type": "integer", "description": "The total number of variants (offers)." },
+            "offers": {
+                "type": "array",
+                "description": "List of all individual product variants (offers).",
+                "items": { "$ref": "#/components/schemas/Offer" }
+            }
+          },
+          "required": ["@type", "lowPrice", "highPrice", "priceCurrency", "offerCount", "offers"]
+      },
+      "Offer": {
+        "type": "object",
+        "description": "Represents a single product variant, based on an item in product.variants.",
+        "properties": {
+          "@type": { "type": "string", "default": "Offer" },
+          "id": { "type": "string", "description": "The GID of the product variant (variant.admin_graphql_api_id).", "example": "gid://shopify/ProductVariant/1234567890123" },
+          "sku": { "type": "string", "nullable": true, "description": "Stock Keeping Unit (variant.sku)." },
+          "name": { "type": "string", "description": "Name or title of the variant (variant.title).", "example": "Red / Small" },
+          "price": { "type": "string", "description": "Price of this variant (variant.price). Consider if this should be number.", "example": "29.99" },
+          "priceCurrency": { "type": "string", "description": "Currency code for the price.", "example": "USD" },
+          "availability": { "type": "string", "format": "url", "description": "Schema.org availability based on inventory_quantity.", "example": "https://schema.org/InStock" },
+          "inventoryLevel": {
+            "type": "object",
+            "properties": {
+              "@type": { "type": "string", "default": "QuantitativeValue" },
+              "value": { "type": "integer", "nullable": true, "description": "Available quantity (variant.inventory_quantity)." }
+            },
+            "required": ["@type", "value"]
+          },
+          "itemCondition": { "type": "string", "format": "url", "default": "https://schema.org/NewCondition", "description": "Schema.org item condition." },
+          "url": { "type": "string", "format": "url", "description": "URL to the product page with this specific variant pre-selected.", "example": "https://your-store.myshopify.com/products/classic-red-tshirt?variant=12345" },
+          "attributes": {
+            "type": "array",
+            "description": "Selected options for this variant (e.g., Color: Red, Size: Small), derived from product.options and variant.optionN.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "description": "Option name (e.g., 'Color')." },
+                "value": { "type": "string", "description": "Option value (e.g., 'Red')." }
+              },
+              "required": ["name", "value"]
+            }
+          }
+        },
+        "required": ["@type", "id", "name", "price", "priceCurrency", "availability", "inventoryLevel", "attributes", "url"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "statusCode": { "type": "integer", "description": "HTTP status code." },
+          "message": { "type": "string", "description": "A human-readable error message." },
+          "error": { "type": "string", "nullable": true, "description": "A short error code or type (e.g., 'Bad Request')." },
+          "timestamp": { "type": "string", "format": "date-time", "description": "Timestamp of when the error occurred." },
+          "path": { "type": "string", "description": "The path that was requested." }
+        },
+        "required": ["statusCode", "message"]
+      }
+    },
+    "securitySchemes": {
+      "AgentApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API Key for authenticating agent requests to protected endpoints (e.g., /checkouts)."
+      }
+    },
+    "responses": {
+        "BadRequest": {
+            "description": "Bad Request. The request was malformed or missing required parameters.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+        },
+        "UnauthorizedShopifyToken": {
+            "description": "Unauthorized. The Shopify Access Token for the given shop is missing, invalid, or does not have sufficient permissions for the requested operation.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+        },
+        "UnauthorizedAgentApiKey": {
+            "description": "Unauthorized. The Agent API Key (e.g., X-API-Key header) is missing or invalid.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+        },
+        "NotFound": {
+            "description": "Not Found. The requested resource (e.g., product) could not be found.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+        }
     }
   }
 }

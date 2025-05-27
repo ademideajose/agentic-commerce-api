@@ -1,56 +1,88 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+// src/products/products.service.ts
+import {
+  Injectable,
+  UnauthorizedException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import axios from 'axios';
-
-//const SHOP = 'theapparelhouse.myshopify.com';
-let ADMIN_API_TOKEN = '';
+import { TokenStorageService } from '../auth/token-storage.service'; // <<< Adjust path as needed
 
 @Injectable()
 export class ProductsService {
-  async findAll(shop: string) {
-    if (!ADMIN_API_TOKEN) {
-      // In a multi-tenant app, you'd fetch the token for the specific 'shop' here
+  private readonly logger = new Logger(ProductsService.name);
+
+  constructor(private readonly tokenStorageService: TokenStorageService) {}
+
+  private async getShopifyHeaders(
+    shop: string,
+  ): Promise<{ [key: string]: string }> {
+    const token = await this.tokenStorageService.getToken(shop);
+    if (!token) {
+      this.logger.warn(
+        `No token found for shop ${shop} in ProductsService operations.`,
+      );
       throw new UnauthorizedException(
-        'Access token not available for this shop. Complete OAuth first.',
+        `Access token not available for shop ${shop}. Please ensure the app is authorized.`,
       );
     }
-    const res = await axios.get(
-      `https://${shop}/admin/api/2024-04/products.json`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': ADMIN_API_TOKEN,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-    return res.data.products;
+    return {
+      'X-Shopify-Access-Token': token,
+      'Content-Type': 'application/json',
+    };
   }
 
-  async findOne(id: string, shop: string) {
-    if (!ADMIN_API_TOKEN) {
-      // In a multi-tenant app, you'd fetch the token for the specific 'shop' here
-      throw new UnauthorizedException(
-        'Access token not available for this shop. Complete OAuth first.',
+  async findAll(shop: string): Promise<any[]> {
+    const headers = await this.getShopifyHeaders(shop);
+    try {
+      const response = await axios.get(
+        `https://${shop}/admin/api/2024-04/products.json`, // Use your target API version
+        { headers },
       );
+      return response.data.products || [];
+    } catch (error) {
+      this.logger.error(
+        `Error fetching products for ${shop}: ${error.message}`,
+        error.stack,
+      );
+      if (error.response?.status === 401)
+        throw new UnauthorizedException(
+          'Shopify token invalid or insufficient scope.',
+        );
+      throw error; // Re-throw other errors
     }
-
-    const res = await axios.get(
-      `https://${shop}/admin/api/2024-04/products/${id}.json`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': ADMIN_API_TOKEN,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-
-    return res.data.product;
   }
 
-  // TEMP: helper to manually set token
-  setToken(token: string) {
-    console.warn(
-      'Setting a global ADMIN_API_TOKEN. This is not suitable for multi-tenancy without further changes for per-shop token management.',
-    );
-    ADMIN_API_TOKEN = token;
+  async findOne(productId: string, shop: string): Promise<any> {
+    const headers = await this.getShopifyHeaders(shop);
+    try {
+      // Assuming productId is the Shopify REST ID here. If it's GID, adjust the URL or use GraphQL.
+      // The blueprint's path /products/{productId} usually implies it's your system's ID or GID.
+      // Your controller logic transforms GID from path to use with REST API.
+      // If 'productId' is Shopify's REST API ID:
+      const response = await axios.get(
+        `https://<span class="math-inline">\{shop\}/admin/api/2024\-04/products/</span>{productId}.json`, // Use your target API version
+        { headers },
+      );
+      if (!response.data.product)
+        throw new NotFoundException(
+          `Product ${productId} not found on shop ${shop}`,
+        );
+      return response.data.product;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching product ${productId} for ${shop}: ${error.message}`,
+        error.stack,
+      );
+      if (error.response?.status === 401)
+        throw new UnauthorizedException(
+          'Shopify token invalid or insufficient scope.',
+        );
+      if (error.response?.status === 404)
+        throw new NotFoundException(
+          `Product ${productId} not found on shop ${shop}`,
+        );
+      throw error;
+    }
   }
 }
