@@ -4,10 +4,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
 import { AuthController } from './auth/auth.controller';
-import { SuggestModule } from './suggest/suggest.module';
 
 @Module({
-  imports: [ProductsModule, ConfigModule.forRoot(), SuggestModule],
+  imports: [ProductsModule, ConfigModule.forRoot()],
   controllers: [AppController, AuthController],
   providers: [AppService],
 })
