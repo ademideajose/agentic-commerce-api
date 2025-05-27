@@ -1,0 +1,83 @@
+
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Agentic Commerce API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/products": {
+      "get": {
+        "summary": "Search and filter products",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "price_min", "in": "query", "schema": { "type": "number" } },
+          { "name": "price_max", "in": "query", "schema": { "type": "number" } },
+          { "name": "tags_includeany", "in": "query", "schema": { "type": "string" } },
+          { "name": "in_stock", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered list of products"
+          }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "get": {
+        "summary": "Get a product by ID",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single product object"
+          }
+        }
+      }
+    },
+    "/checkouts": {
+      "post": {
+        "summary": "Generate a checkout URL",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shop": { "type": "string" },
+                  "lineItems": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "variantId": { "type": "string" },
+                        "quantity": { "type": "integer" }
+                      },
+                      "required": ["variantId", "quantity"]
+                    }
+                  },
+                  "discountCode": { "type": "string" },
+                  "note": { "type": "string" },
+                  "customerEmail": { "type": "string" }
+                },
+                "required": ["shop", "lineItems"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Checkout URL"
+          }
+        }
+      }
+    }
+  }
+}
