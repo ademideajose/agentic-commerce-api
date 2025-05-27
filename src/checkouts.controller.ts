@@ -1,4 +1,3 @@
-
 import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
 import axios from 'axios';
 
@@ -8,12 +7,17 @@ export class CheckoutController {
   async createCheckout(@Body() body: any) {
     const { shop, lineItems, discountCode, note, customerEmail } = body;
 
-    if (!shop || !lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
+    if (
+      !shop ||
+      !lineItems ||
+      !Array.isArray(lineItems) ||
+      lineItems.length === 0
+    ) {
       throw new BadRequestException('Missing required fields: shop, lineItems');
     }
 
     const cartQuery = lineItems
-      .map(item => {
+      .map((item) => {
         const encodedVariantId = encodeURIComponent(item.variantId);
         return `${encodedVariantId}:${item.quantity}`;
       })
@@ -26,7 +30,9 @@ export class CheckoutController {
     if (note) params.append('note', note);
     if (customerEmail) params.append('checkout[email]', customerEmail);
 
-    const checkoutUrl = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+    const checkoutUrl = params.toString()
+      ? `${baseUrl}?${params.toString()}`
+      : baseUrl;
 
     return { checkoutUrl };
   }
