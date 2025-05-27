@@ -24,7 +24,8 @@ export class AuthController {
     @Query('shop') shop: string, // <<< ADDED shop query parameter
     @Res() res: Response,
   ) {
-    if (!shop) { // <<< ADDED validation for shop
+    if (!shop) {
+      // <<< ADDED validation for shop
       throw new BadRequestException(
         'Shop query parameter is required to start OAuth.',
       );
@@ -45,9 +46,10 @@ export class AuthController {
   async handleCallback(
     @Query('code') code: string,
     @Query('shop') shop: string, // <<< ADDED shop query parameter (retrieved from redirect)
-    @Res() res: Response
+    @Res() res: Response,
   ) {
-    if (!code || !shop) { // <<< ADDED validation
+    if (!code || !shop) {
+      // <<< ADDED validation
       throw new BadRequestException('Missing code or shop in callback.');
     }
 
