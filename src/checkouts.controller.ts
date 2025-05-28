@@ -1,9 +1,16 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
-import axios from 'axios';
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiKeyAuthGuard } from './auth/auth.guard';
 
 @Controller('checkouts')
 export class CheckoutController {
   @Post()
+  @UseGuards(ApiKeyAuthGuard)
   async createCheckout(@Body() body: any) {
     const { shop, lineItems, discountCode, note, customerEmail } = body;
 
@@ -18,7 +25,11 @@ export class CheckoutController {
 
     const cartQuery = lineItems
       .map((item) => {
-        const encodedVariantId = encodeURIComponent(item.variantId);
+        // Ensure variantId is just the ID number for cart permalinks
+        const variantIdNumber = String(item.variantId).includes('/')
+          ? String(item.variantId).split('/').pop()
+          : item.variantId;
+        const encodedVariantId = encodeURIComponent(variantIdNumber);
         return `${encodedVariantId}:${item.quantity}`;
       })
       .join(',');

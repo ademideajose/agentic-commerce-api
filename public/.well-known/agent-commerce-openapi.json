@@ -356,7 +356,7 @@
       "AgentApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-API-Key",
+        "name": "x-api-key",
         "description": "API Key for authenticating agent requests to protected endpoints (e.g., /checkouts)."
       }
     },

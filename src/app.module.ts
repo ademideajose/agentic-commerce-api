@@ -3,11 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
-//import { AuthController } from './auth/auth.controller';
-
+import { AuthController } from './auth/auth.controller';
+import { ApiKeyAuthGuard } from './auth/auth.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
-//import { CheckoutController } from './checkouts.controller';
+import { CheckoutController } from './checkouts.controller';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { AuthModule } from './auth/auth.module';
     ProductsModule,
     // CheckoutModule // You'll create and add this later
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, AuthController, CheckoutController],
+  providers: [AppService, ApiKeyAuthGuard],
 })
 export class AppModule {}
