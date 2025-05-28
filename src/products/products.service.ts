@@ -40,26 +40,6 @@ export class ProductsService {
         { headers },
       );
 
-      // <<< --- TEMPORARY LOGGING for findAll --- >>>
-      if (response.data.products && response.data.products.length > 0) {
-        this.logger.debug(
-          'Raw product data from Shopify (findAll - first product): ' +
-            JSON.stringify(response.data.products[0], null, 2),
-        );
-        const firstProduct = response.data.products[0];
-        this.logger.debug(
-          'Product admin_graphql_api_id (findAll): ' +
-            firstProduct.admin_graphql_api_id,
-        );
-        if (firstProduct.variants && firstProduct.variants.length > 0) {
-          this.logger.debug(
-            'Variant admin_graphql_api_id (findAll - first variant of first product): ' +
-              firstProduct.variants[0].admin_graphql_api_id,
-          );
-        }
-      }
-      // <<< --- END TEMPORARY LOGGING --- >>>
-
       return response.data.products || [];
     } catch (error) {
       this.logger.error(
@@ -85,28 +65,6 @@ export class ProductsService {
         `https://<span class="math-inline">\{shop\}/admin/api/2024\-04/products/</span>{productId}.json`, // Use your target API version
         { headers },
       );
-
-      // <<< --- TEMPORARY LOGGING for findOne --- >>>
-      if (response.data.product) {
-        this.logger.debug(
-          'Raw product data from Shopify (findOne): ' +
-            JSON.stringify(response.data.product, null, 2),
-        );
-        this.logger.debug(
-          'Product admin_graphql_api_id (findOne): ' +
-            response.data.product.admin_graphql_api_id,
-        );
-        if (
-          response.data.product.variants &&
-          response.data.product.variants.length > 0
-        ) {
-          this.logger.debug(
-            'Variant admin_graphql_api_id (findOne - first variant): ' +
-              response.data.product.variants[0].admin_graphql_api_id,
-          );
-        }
-      }
-      // <<< --- END TEMPORARY LOGGING --- >>>
 
       if (!response.data.product)
         throw new NotFoundException(
