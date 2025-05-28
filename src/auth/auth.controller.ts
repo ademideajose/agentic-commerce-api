@@ -19,6 +19,7 @@ import { TokenStorageService } from './token-storage.service';
 interface ShopifyInitDto {
   shop: string;
   accessToken: string;
+  scopes: string;
 }
 
 @Controller('auth') // Will be /agent-api/auth due to global prefix in main.ts
@@ -124,27 +125,35 @@ export class AuthController {
   async handleShopifyInit(
     @Body() shopifyInitDto: ShopifyInitDto,
   ): Promise<{ message: string }> {
-    const { shop, accessToken } = shopifyInitDto; // accessToken from Shopify App is received
-    if (!shop) {
-      throw new BadRequestException('Shop is required in the request body.');
+    const { shop, accessToken, scopes } = shopifyInitDto; // accessToken from Shopify App is received
+    if (!shop || !accessToken || !scopes) {
+      // <<< Validate all three
+      throw new BadRequestException(
+        'Shop, accessToken, and scopes are required in the request body.',
+      );
     }
+
     this.logger.log(
-      `Received Shopify init POST for shop: ${shop} with accesstoken ${accessToken}.`,
+      `Received Shopify init POST for shop: ${shop}. Scopes: ${scopes}. Token (length: ${accessToken?.length}) received from Shopify app.`,
     );
 
-    // As discussed, this endpoint primarily serves as a notification.
-    // The NestJS app should rely on its own OAuth flow (above) for operational tokens.
-    // You *could* optionally try to use/store the accessToken from the Shopify app here,
-    // but it requires careful consideration of scopes and token lifecycle.
-    // Example (use with caution, ensure scopes match what this NestJS app needs):
-    // if (accessToken) {
-    //   const scopesFromShopifyApp = "read_products"; // You would need to know/infer/receive these scopes
-    //   await this.tokenStorageService.saveToken(shop, accessToken, scopesFromShopifyApp);
-    //   this.logger.log(`Token for ${shop} (from Shopify app init) has been stored/updated.`);
-    // }
-
-    return {
-      message: `Shopify init acknowledged for ${shop}. This service will use its own OAuth flow for Shopify API access as needed.`,
-    };
+    try {
+      await this.tokenStorageService.saveToken(shop, accessToken, scopes);
+      this.logger.log(
+        `Token for ${shop} (from Shopify app init) has been successfully stored/updated.`,
+      );
+      return {
+        message: `Shopify init successful for shop: ${shop}. Token and scopes stored.`,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error storing token during Shopify init for ${shop}: ${error.message}`,
+        error.stack,
+      );
+      // Don't rethrow sensitive errors directly.
+      throw new BadRequestException(
+        `Could not process Shopify initialization for ${shop}.`,
+      );
+    }
   }
 }
