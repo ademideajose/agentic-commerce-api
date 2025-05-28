@@ -9,10 +9,16 @@ export class PrismaService
 {
   constructor() {
     super(); // Pass Prisma Client options if needed, e.g., logging
+    console.log('PrismaService: Constructor called.');
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+      console.log('PrismaService: Successfully connected to the database.');
+    } catch (error) {
+      console.error('PrismaService: FAILED to connect to the database.', error);
+    }
   }
 
   async onModuleDestroy() {

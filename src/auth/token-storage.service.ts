@@ -14,12 +14,27 @@ export class TokenStorageService {
     accessToken: string,
     scopes?: string,
   ): Promise<ShopAuth> {
-    this.logger.log(`Saving/updating token for shop: ${shop}`);
-    return this.prisma.shopAuth.upsert({
-      where: { shop },
-      update: { accessToken, scopes, isActive: true },
-      create: { shop, accessToken, scopes, isActive: true },
-    });
+    this.logger.log(
+      `Attempting to save/update token for shop: ${shop} with scopes: ${scopes}`,
+    );
+
+    try {
+      const result: ShopAuth = await this.prisma.shopAuth.upsert({
+        where: { shop },
+        update: { accessToken, scopes, isActive: true },
+        create: { shop, accessToken, scopes, isActive: true },
+      });
+      this.logger.log(
+        `Token for shop ${shop} successfully upserted. Result ID: ${result.id}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error saving/updating token for shop: ${shop}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   async getToken(shop: string): Promise<string | null> {
