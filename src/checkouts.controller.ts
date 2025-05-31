@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Body,
+  Query,
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
@@ -11,8 +12,8 @@ import { ApiKeyAuthGuard } from './auth/auth.guard';
 export class CheckoutController {
   @Post()
   @UseGuards(ApiKeyAuthGuard)
-  async createCheckout(@Body() body: any) {
-    const { shop, lineItems, discountCode, note, customerEmail } = body;
+  async createCheckout(@Query('shop') shop: string, @Body() body: any) {
+    const { lineItems, discountCode, note, customerEmail } = body;
 
     if (
       !shop ||

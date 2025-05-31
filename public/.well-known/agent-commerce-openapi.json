@@ -40,27 +40,57 @@
           { "name": "color", "in": "query", "description": "Filter by product option 'Color'. Case-insensitive.", "schema": { "type": "string" } },
           { "name": "size", "in": "query", "description": "Filter by product option 'Size'. Case-insensitive.", "schema": { "type": "string" } },
           { "name": "in_stock", "in": "query", "description": "Set to true to only return products with at least one variant currently in stock.", "schema": { "type": "boolean" } },
-          { "name": "sort_by", "in": "query", "description": "Sort order for products.", "schema": { "type": "string", "enum": ["published_at_desc", "price_asc", "price_desc", "relevance"], "default": "relevance" } },
-          { "name": "limit", "in": "query", "description": "Number of products to return per page.", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
-          { "name": "offset", "in": "query", "description": "Offset for pagination.", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successfully retrieved product data. Returns a single ProductComplete object if 'handle' is provided, otherwise an array of ProductSummary objects.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    { "$ref": "#/components/schemas/ProductComplete" },
-                    {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/ProductSummary" }
-                    }
-                  ]
-                }
-              }
+          { 
+            "name": "sort_by", 
+            "in": "query", 
+            "description": "Sort order for products. Corresponds to Shopify's ProductSortKeys.", 
+            "schema": { 
+              "type": "string", 
+              "enum": ["RELEVANCE", "PRICE", "TITLE", "CREATED_AT", "UPDATED_AT", "PUBLISHED_AT"], 
+              "default": "RELEVANCE" 
+            } 
+          },{
+            "name": "sort_direction",
+            "in": "query",
+            "description": "Sort direction for 'sort_by' parameter.",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "asc" 
             }
           },
+          { 
+            "name": "first", 
+            "in": "query", 
+            "description": "Number of products to return per page.", 
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 250 } 
+          },
+          { 
+            "name": "after", 
+            "in": "query", 
+            "description": "Cursor for fetching the next page of results.", 
+            "schema": { "type": "string" } 
+          }
+        ],
+        "responses": {
+  "200": {
+    "description": "Successfully retrieved a paginated list of product summaries.",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "products": {
+              "type": "array",
+              "items": { "$ref": "#/components/schemas/ProductSummary" }
+            },
+            "pageInfo": { "$ref": "#/components/schemas/PageInfo" }
+          },
+          "required": ["products", "pageInfo"]
+        }
+      }
+    }
+  },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/UnauthorizedShopifyToken" },
           "404": { "$ref": "#/components/responses/NotFound" }
@@ -164,7 +194,7 @@
                     "example": "customer@example.com"
                   }
                 },
-                "required": ["shop", "lineItems"]
+                "required": ["lineItems"]
               }
             }
           }
@@ -222,6 +252,17 @@
         },
         "required": ["productId", "title"]
       },
+      "PageInfo": {
+  "type": "object",
+  "description": "Information about pagination in a connection.",
+  "properties": {
+    "hasNextPage": { "type": "boolean", "description": "Indicates if there are more pages to fetch." },
+    "endCursor": { "type": "string", "nullable": true, "description": "The cursor for the last item on the current page, to be used as 'after' query parameter for the next page." },
+    "hasPreviousPage": { "type": "boolean", "nullable": true, "description": "Indicates if there are previous pages." },
+    "startCursor": { "type": "string", "nullable": true, "description": "The cursor for the first item on the current page." }
+  },
+  "required": ["hasNextPage"]
+},
       "ProductComplete": {
         "type": "object",
         "description": "The complete representation of a product, including all variants and detailed information. This is based on the transformProductForDetail function.",
