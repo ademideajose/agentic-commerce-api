@@ -169,8 +169,7 @@ export class ProductsService {
                       admin_graphql_api_id: id
                       title
                       sku
-                      priceV2 { amount currencyCode }
-                      price: priceV2 { amount }
+                      price
                       inventoryQuantity
                       selectedOptions { name value } # For controller option filtering
                       image { id url src: url altText }
@@ -299,8 +298,7 @@ export class ProductsService {
                   admin_graphql_api_id: id 
                   title
                   sku
-                  priceV2 { amount currencyCode }
-                  price: priceV2 { amount }
+                  price
                   inventoryQuantity
                   image { id url src: url altText }
                   selectedOptions { name value }

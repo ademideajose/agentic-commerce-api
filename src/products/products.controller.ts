@@ -47,16 +47,12 @@ const transformProductForDetail = (product: any, shopDomain: string): any => {
     offers: {
       '@type': 'AggregateOffer',
       lowPrice: Math.min(
-        ...(product.variants || []).map((v: any) =>
-          parseFloat(v.priceV2?.amount || v.price || '0'),
-        ),
+        ...(product.variants || []).map((v: any) => parseFloat(v.price || '0')),
       ),
       highPrice: Math.max(
-        ...(product.variants || []).map((v: any) =>
-          parseFloat(v.priceV2?.amount || v.price || '0'),
-        ),
+        ...(product.variants || []).map((v: any) => parseFloat(v.price || '0')),
       ),
-      priceCurrency: product.variants?.[0]?.priceV2?.currencyCode || 'USD', // Use priceV2
+      priceCurrency: 'USD',
       offerCount: product.variants?.length || 0,
       offers: (product.variants || []).map((variant: any) => {
         // Adapt attributes from variant.selectedOptions
@@ -84,8 +80,8 @@ const transformProductForDetail = (product: any, shopDomain: string): any => {
           id: variant.admin_graphql_api_id || variant.id,
           sku: variant.sku,
           name: variant.title,
-          price: variant.priceV2?.amount || variant.price,
-          priceCurrency: variant.priceV2?.currencyCode || 'USD',
+          price: variant.price,
+          priceCurrency: 'USD',
           availability:
             (variant.inventoryQuantity !== undefined &&
               variant.inventoryQuantity > 0) ||
@@ -249,7 +245,7 @@ export class ProductsController {
         p.image?.url ||
         p.featuredImage?.url ||
         p.images?.[0]?.url, // Use .url from GraphQL
-      basePrice: p.variants?.[0]?.priceV2?.amount || p.variants?.[0]?.price, // Use .priceV2.amount
+      basePrice: p.variants?.[0]?.price, // Use .priceV2.amount
       keyTags: Array.isArray(p.tags)
         ? p.tags.slice(0, 3)
         : p.tags
