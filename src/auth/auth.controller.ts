@@ -15,6 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import axios from 'axios';
 import { TokenStorageService } from './token-storage.service';
+import { Param } from '@nestjs/common';
 
 interface ShopifyInitDto {
   shop: string;
@@ -30,6 +31,11 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly tokenStorageService: TokenStorageService,
   ) {}
+
+  @Get('debug/token/:shop') // path will be /agent-api/auth/debug/token/:shop
+async debugToken(@Param('shop') shop: string): Promise<any> {
+  return await this.tokenStorageService.debugTokenRetrieval(shop);
+}
 
   @Get() // path is /agent-api/auth
   async startOAuth(@Query('shop') shop: string, @Res() res: Response) {

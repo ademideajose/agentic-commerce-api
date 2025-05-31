@@ -36,7 +36,39 @@ export class TokenStorageService {
       throw error;
     }
   }
+  async debugTokenRetrieval(shop: string): Promise<any> {
+    this.logger.log(`🔍 Debug: Checking token for shop: ${shop}`);
 
+    try {
+      // Get all records
+      const allRecords = await this.prisma.shopAuth.findMany();
+      this.logger.log(
+        `📊 Found ${allRecords.length} total records in database`,
+      );
+
+      // Try to get the specific token
+      const token = await this.getToken(shop);
+      this.logger.log(`🎯 Token for ${shop}: ${token ? 'FOUND' : 'NOT FOUND'}`);
+
+      return {
+        shop,
+        tokenFound: !!token,
+        tokenPreview: token ? token.substring(0, 10) + '...' : null,
+        allRecords: allRecords.map((r) => ({
+          shop: r.shop,
+          isActive: r.isActive,
+          hasToken: !!r.accessToken,
+          createdAt: r.createdAt,
+          tokenPreview: r.accessToken
+            ? r.accessToken.substring(0, 10) + '...'
+            : null,
+        })),
+      };
+    } catch (error) {
+      this.logger.error(`❌ Debug error: ${error.message}`);
+      throw error;
+    }
+  }
   async isKnownStorefront(origin: string): Promise<boolean> {
     try {
       // Strip protocol → widgets-store.myshopify.com
@@ -80,5 +112,9 @@ export class TokenStorageService {
       );
       return null;
     }
+  }
+
+  async getAllRecords(): Promise<ShopAuth[]> {
+    return this.prisma.shopAuth.findMany();
   }
 }
