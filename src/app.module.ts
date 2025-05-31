@@ -18,9 +18,11 @@ import { join } from 'path';
     AuthModule,
     ProductsModule,
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'), // <root>/public
+      rootPath: join(__dirname, '..', 'public'),
+      serveStaticOptions: {
+        dotfiles: 'allow',
+      },
     }),
-    // CheckoutModule // You'll create and add this later
   ],
   controllers: [AppController, AuthController, CheckoutController],
   providers: [AppService, ApiKeyAuthGuard],
