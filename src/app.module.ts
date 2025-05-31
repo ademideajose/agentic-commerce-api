@@ -8,6 +8,8 @@ import { ApiKeyAuthGuard } from './auth/auth.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CheckoutController } from './checkouts.controller';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -15,6 +17,11 @@ import { CheckoutController } from './checkouts.controller';
     PrismaModule,
     AuthModule,
     ProductsModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'), // <root>/public
+      serveRoot: '/.well-known', // URL prefix
+      exclude: ['/agent-api*'], // keep API routes separate
+    }),
     // CheckoutModule // You'll create and add this later
   ],
   controllers: [AppController, AuthController, CheckoutController],
