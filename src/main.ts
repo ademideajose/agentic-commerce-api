@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
-import { ValidationPipe } from '@nestjs/common';
+//import { ValidationPipe } from '@nestjs/common';
 import { TokenStorageService } from './auth/token-storage.service';
 
 dotenv.config();
@@ -36,7 +36,7 @@ async function bootstrap() {
   });
 
   /* (Optional) DTO validation */
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  //app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
   /* 3. Pick up the port from the host environment or default to 3000 */
   const port = process.env.PORT || 3000;
