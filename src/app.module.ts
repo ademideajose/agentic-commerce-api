@@ -18,8 +18,7 @@ import { join } from 'path';
     AuthModule,
     ProductsModule,
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public', '.well-known'), // <root>/public
-      serveRoot: '/.well-known', // URL prefix
+      rootPath: join(__dirname, '..', 'public'), // <root>/public
     }),
     // CheckoutModule // You'll create and add this later
   ],
