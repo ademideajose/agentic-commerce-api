@@ -18,7 +18,8 @@ import { join } from 'path';
     AuthModule,
     ProductsModule,
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
+      rootPath: join(__dirname, 'public'),
+      serveRoot: '/agent-api',
       serveStaticOptions: {
         dotfiles: 'allow',
         index: false,
