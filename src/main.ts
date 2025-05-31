@@ -3,12 +3,38 @@ import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 //import { ValidationPipe } from '@nestjs/common';
 import { TokenStorageService } from './auth/token-storage.service';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
 dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('agent-api');
+
+  const publicPaths = [
+    join(
+      process.cwd(),
+      'dist',
+      'public',
+      '.well-known',
+      'agent-commerce-openapi.json',
+    ),
+    join(process.cwd(), 'public', '.well-known', 'agent-commerce-openapi.json'),
+    join(
+      __dirname,
+      '..',
+      'public',
+      '.well-known',
+      'agent-commerce-openapi.json',
+    ),
+  ];
+
+  console.log('Checking for OpenAPI file in the following locations:');
+  publicPaths.forEach((path) => {
+    const exists = existsSync(path);
+    console.log(`  ${path}: ${exists ? 'EXISTS' : 'NOT FOUND'}`);
+  });
 
   const tokenStore = app.get(TokenStorageService);
 
