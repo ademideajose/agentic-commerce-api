@@ -21,6 +21,8 @@ import { join } from 'path';
       rootPath: join(__dirname, '..', 'public'),
       serveStaticOptions: {
         dotfiles: 'allow',
+        index: false,
+        fallthrough: false,
       },
     }),
   ],
