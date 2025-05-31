@@ -18,9 +18,8 @@ import { join } from 'path';
     AuthModule,
     ProductsModule,
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'), // <root>/public
+      rootPath: join(__dirname, 'public', '.well-known'), // <root>/public
       serveRoot: '/.well-known', // URL prefix
-      exclude: ['/agent-api*'], // keep API routes separate
     }),
     // CheckoutModule // You'll create and add this later
   ],
