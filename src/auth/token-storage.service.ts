@@ -37,9 +37,25 @@ export class TokenStorageService {
     }
   }
 
+  async isKnownStorefront(origin: string): Promise<boolean> {
+    try {
+      // Strip protocol → widgets-store.myshopify.com
+      const host = new URL(origin).hostname;
+
+      // Look up an active record for that domain
+      const record = await this.prisma.shopAuth.findFirst({
+        where: { shop: host, isActive: true },
+      });
+
+      return !!record; // true ⇒ allow CORS
+    } catch (err) {
+      this.logger.error(`CORS check failed for ${origin}: ${err.message}`);
+      return false; // default-deny on parse / DB errors
+    }
+  }
   async getToken(shop: string): Promise<string | null> {
     this.logger.debug(`Attempting to retrieve token for shop: ${shop}`);
-    const shopAuthRecord = await this.prisma.shopAuth.findUnique({
+    const shopAuthRecord = await this.prisma.shopAuth.findFirst({
       where: { shop, isActive: true },
     });
     if (shopAuthRecord) {

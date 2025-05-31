@@ -2,29 +2,23 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Agentic Commerce API",
-    "version": "1.1.0",
-    "description": "API for AI agents to browse products and initiate checkouts, based on Agentic Commerce Infrastructure Blueprint v1.1.",
+    "version": "1.2.0",
+    "description": "Central OpenAPI document for AI agents. One file serves every Shopify merchant; each request carries ?shop=your-store.myshopify.com so the backend can route.",
     "contact": {
-      "name": "Your Store/Company Name",
-      "url": "https://your-store-or-company-website.com",
-      "email": "support@your-store-or-company.com"
+      "name": "Agentic Commerce",
+      "url": "https://agentic-commerce-api.onrender.com",
+      "email": "support@agentic-commerce.com"
     }
   },
   "servers": [
     {
       "url": "https://agentic-commerce-api.onrender.com/agent-api",
-      "description": "Production Server for Agentic Commerce API (with /agent-api prefix)"
+      "description": "Central API host (add ?shop=your-store.myshopify.com to every request)"
     }
   ],
   "tags": [
-    {
-      "name": "Products",
-      "description": "Endpoints for product discovery and retrieval."
-    },
-    {
-      "name": "Checkouts",
-      "description": "Endpoints for initiating the checkout process."
-    }
+    { "name": "Products",  "description": "Product discovery and retrieval" },
+    { "name": "Checkouts", "description": "Generate pre-filled Shopify checkouts" }
   ],
   "paths": {
     "/products": {
@@ -34,13 +28,7 @@
         "description": "Allows agents to search, filter, and paginate through products. If 'handle' is provided, returns a single complete product object.",
         "operationId": "searchProducts",
         "parameters": [
-          {
-            "name": "shop",
-            "in": "query",
-            "required": true,
-            "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com)",
-            "schema": { "type": "string", "example": "your-store.myshopify.com" }
-          },
+          { "$ref": "#/components/parameters/ShopQuery" },
           { "name": "q", "in": "query", "description": "Free-text search query (searches title, body_html, tags, vendor, product_type).", "schema": { "type": "string" } },
           { "name": "handle", "in": "query", "description": "Product URL slug/handle. If provided, returns only that product's full details, ignoring other filters.", "schema": { "type": "string" } },
           { "name": "product_type", "in": "query", "description": "Filter by Shopify product type.", "schema": { "type": "string" } },
@@ -93,13 +81,7 @@
             "description": "The Shopify Admin GraphQL ID of the product (e.g., gid://shopify/Product/1234567890). This is the 'id' field returned by the products endpoint.",
             "schema": { "type": "string", "example": "gid://shopify/Product/1234567890" }
           },
-          {
-            "name": "shop",
-            "in": "query",
-            "required": true,
-            "description": "The myshopify.com domain of the store (e.g., your-store.myshopify.com).",
-            "schema": { "type": "string", "example": "your-store.myshopify.com" }
-          }
+          { "$ref": "#/components/parameters/ShopQuery" }
         ],
         "responses": {
           "200": {
@@ -126,6 +108,9 @@
           {
             "AgentApiKeyAuth": []
           }
+        ],
+        "parameters": [
+          { "$ref": "#/components/parameters/ShopQuery" }
         ],
         "requestBody": {
           "required": true,
@@ -211,6 +196,15 @@
     }
   },
   "components": {
+"parameters": {
+      "ShopQuery": {
+        "name": "shop",
+        "in": "query",
+        "required": true,
+        "description": "The merchant’s myshopify.com domain (e.g., widgets-store.myshopify.com)",
+        "schema": { "type": "string", "example": "widgets-store.myshopify.com" }
+      }
+    },
     "schemas": {
       "ProductSummary": {
         "type": "object",
@@ -378,5 +372,6 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
         }
     }
+    
   }
 }
