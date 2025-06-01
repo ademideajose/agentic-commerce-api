@@ -7,7 +7,80 @@ import { ShopAuth } from '@prisma/client';
 export class TokenStorageService {
   private readonly logger = new Logger(TokenStorageService.name);
 
+  // In-memory cache for domain mappings
+  private domainMappings = new Map<string, string>();
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Resolves frontend domain to backend domain
+   * @param inputDomain - Could be either frontend or backend domain
+   * @returns Backend domain that exists in database
+   */
+  async resolveDomain(inputDomain: string): Promise<string | null> {
+    this.logger.debug(`🔍 Resolving domain: ${inputDomain}`);
+
+    // Check cache first
+    if (this.domainMappings.has(inputDomain)) {
+      const resolved = this.domainMappings.get(inputDomain)!;
+      this.logger.debug(`📋 Cache hit: ${inputDomain} → ${resolved}`);
+      return resolved;
+    }
+
+    // Try direct lookup (input might already be backend domain)
+    // Use skipResolution=true to prevent infinite loop
+    const directToken = await this.getToken(inputDomain, true);
+
+    if (directToken) {
+      this.logger.debug(`✅ Direct match found for: ${inputDomain}`);
+      // Cache the identity mapping
+      this.domainMappings.set(inputDomain, inputDomain);
+      return inputDomain;
+    }
+
+    // Try to find by pattern matching
+    // Example: theeapparelstore.myshopify.com → 1ekhav-v7.myshopify.com
+    const allShops = await this.prisma.shopAuth.findMany({
+      where: { isActive: true },
+      select: { shop: true },
+    });
+
+    // Look for pattern matches
+    for (const shopRecord of allShops) {
+      const backendDomain = shopRecord.shop;
+
+      // Try to derive what the frontend domain might be
+      // Common pattern: remove the version suffix like "-v7"
+      const potentialFrontend = backendDomain.replace(/-v\d+/, '');
+
+      if (potentialFrontend === inputDomain) {
+        this.logger.log(
+          `🎯 Pattern match found: ${inputDomain} → ${backendDomain}`,
+        );
+        // Cache both directions
+        this.domainMappings.set(inputDomain, backendDomain);
+        this.domainMappings.set(backendDomain, backendDomain);
+        return backendDomain;
+      }
+    }
+
+    this.logger.warn(`❌ No domain mapping found for: ${inputDomain}`);
+    return null;
+  }
+
+  /**
+   * Store domain mapping when we learn about it
+   */
+  async storeDomainMapping(
+    frontendDomain: string,
+    backendDomain: string,
+  ): Promise<void> {
+    this.logger.log(
+      `📝 Storing domain mapping: ${frontendDomain} → ${backendDomain}`,
+    );
+    this.domainMappings.set(frontendDomain, backendDomain);
+    this.domainMappings.set(backendDomain, backendDomain); // Identity mapping
+  }
 
   async saveToken(
     shop: string,
@@ -24,6 +97,9 @@ export class TokenStorageService {
         update: { accessToken, scopes, isActive: true },
         create: { shop, accessToken, scopes, isActive: true },
       });
+      // Store identity mapping for backend domain
+      this.domainMappings.set(shop, shop);
+
       this.logger.log(
         `Token for shop ${shop} successfully upserted. Result ID: ${result.id}`,
       );
@@ -74,24 +150,34 @@ export class TokenStorageService {
       // Strip protocol → widgets-store.myshopify.com
       const host = new URL(origin).hostname;
 
-      // Look up an active record for that domain
-      const record = await this.prisma.shopAuth.findFirst({
-        where: { shop: host, isActive: true },
-      });
-
-      return !!record; // true ⇒ allow CORS
+      // Try domain resolution
+      const resolvedDomain = await this.resolveDomain(host);
+      return !!resolvedDomain; // true ⇒ allow CORS
     } catch (err) {
       this.logger.error(`CORS check failed for ${origin}: ${err.message}`);
       return false; // default-deny on parse / DB errors
     }
   }
-  async getToken(shop: string): Promise<string | null> {
+  async getToken(
+    shop: string,
+    skipResolution: boolean = false,
+  ): Promise<string | null> {
     this.logger.debug(`Attempting to retrieve token for shop: ${shop}`);
+
+    let searchDomain = shop;
+
+    // Only do domain resolution if not already resolved
+    if (!skipResolution) {
+      const resolvedDomain = await this.resolveDomain(shop);
+      searchDomain = resolvedDomain || shop;
+    }
+
     const shopAuthRecord = await this.prisma.shopAuth.findFirst({
-      where: { shop, isActive: true },
+      where: { shop: searchDomain, isActive: true },
     });
+
     if (shopAuthRecord) {
-      this.logger.debug(`Token found for shop: ${shop}`);
+      this.logger.debug(`Token found for shop: ${searchDomain}`);
       return shopAuthRecord.accessToken;
     }
     this.logger.warn(`No active token found for shop: ${shop}`);
@@ -100,9 +186,13 @@ export class TokenStorageService {
 
   async deactivateToken(shop: string): Promise<ShopAuth | null> {
     this.logger.log(`Deactivating token for shop: ${shop}`);
+
+    const resolvedDomain = await this.resolveDomain(shop);
+    const searchDomain = resolvedDomain || shop;
+
     try {
       return await this.prisma.shopAuth.update({
-        where: { shop },
+        where: { shop: searchDomain },
         data: { isActive: false, accessToken: `DEACTIVATED_${Date.now()}` },
       });
     } catch (error) {

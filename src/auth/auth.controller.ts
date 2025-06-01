@@ -18,7 +18,8 @@ import { TokenStorageService } from './token-storage.service';
 import { Param } from '@nestjs/common';
 
 interface ShopifyInitDto {
-  shop: string;
+  shop: string; // Backend domain
+  frontendDomain?: string; // Frontend domain (optional)
   accessToken: string;
   scopes: string;
 }
@@ -126,12 +127,22 @@ export class AuthController {
     }
   }
 
+  // Add new endpoint for testing domain resolution
+  @Get('debug/domain/:domain')
+  async debugDomainResolution(@Param('domain') domain: string): Promise<any> {
+    return {
+      inputDomain: domain,
+      resolvedDomain: await this.tokenStorageService.resolveDomain(domain),
+      debugInfo: await this.tokenStorageService.debugTokenRetrieval(domain),
+    };
+  }
+
   @Post('shopify/init') // path is /agent-api/auth/shopify/init
   @HttpCode(HttpStatus.OK)
   async handleShopifyInit(
     @Body() shopifyInitDto: ShopifyInitDto,
   ): Promise<{ message: string }> {
-    const { shop, accessToken, scopes } = shopifyInitDto; // accessToken from Shopify App is received
+    const { shop, frontendDomain, accessToken, scopes } = shopifyInitDto; // accessToken from Shopify App is received
     if (!shop || !accessToken || !scopes) {
       // <<< Validate all three
       throw new BadRequestException(
@@ -145,6 +156,15 @@ export class AuthController {
 
     try {
       await this.tokenStorageService.saveToken(shop, accessToken, scopes);
+
+      // Store domain mapping if frontend domain provided
+      if (frontendDomain && frontendDomain !== shop) {
+        await this.tokenStorageService.storeDomainMapping(frontendDomain, shop);
+        this.logger.log(
+          `📝 Stored domain mapping: ${frontendDomain} → ${shop}`,
+        );
+      }
+
       this.logger.log(
         `Token for ${shop} (from Shopify app init) has been successfully stored/updated.`,
       );
